@@ -13,7 +13,7 @@ from mock_geocoders import make_mock_geocoder
 # Set REQUEST_DURATION to zero for the purpose of testing, but you 
 # can set it higher (realistic is 0.1 or 0.2) for 
 # benchmarking performance.
-REQUEST_DURATION = 0.01
+REQUEST_DURATION = 0.0
 RATE_LIMIT = 2
 TEST_ADDRESSES = addresses[:4]
 
