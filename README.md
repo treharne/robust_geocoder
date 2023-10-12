@@ -11,9 +11,11 @@ Ever tried to geocode an address and ended up with inaccurate or incomplete resu
 Additionally, it's super fast because it geocodes async, yet returns the geocodes in a sync generator as they complete, so you can access them simply in your sync code.
 
 ## Features
+
+- `async` in a thread for massive parallelism
+- Sync `generator` for easy access to results
+- Request rate limiting to prevent exceeding provider rate limits
 - Multiple geocoding strategies
-- Fallback and retry mechanisms
-- Easy-to-use API
 - Extensible for custom strategies
 
 ## Quick Start
