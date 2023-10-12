@@ -4,23 +4,23 @@ import httpx
 import logging
 import os
 
-from base import BaseGeocoder
+from strategies import abstract
 from common import BadAuthError, GeocodedLocation, GeocoderError, FailedGeocodeError
 
 load_dotenv()
 logger = logging.getLogger(__name__)
 
 
-class EsriGeocoder(BaseGeocoder):
+class Geocoder(abstract.Geocoder):
     client_id = os.environ['ESRI_CLIENT_ID']
     client_secret = os.environ['ESRI_CLIENT_SECRET']
     token_url = 'https://www.arcgis.com/sharing/rest/oauth2/token'
     geocode_url = 'https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates'
 
-    def __init__(self, rate_limit=2):
-        super().__init__(rate_limit=rate_limit)
+    def __init__(self, rate_limit: int = 2):
         self.token = None
         self.token_request_lock = asyncio.Lock()
+        super().__init__(rate_limit=rate_limit)
 
     async def _login_params(self) -> dict:
         return {

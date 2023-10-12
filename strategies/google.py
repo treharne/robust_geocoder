@@ -5,7 +5,8 @@ from dotenv import load_dotenv
 import httpx
 import logging
 
-from base import BaseGeocoder
+from strategies import abstract
+
 from common import GeocodedLocation
 
 from common import (
@@ -46,7 +47,7 @@ class STATUS(str, Enum):
     UNKNOWN_ERROR = 'UNKNOWN_ERROR'
 
 
-class GoogleGeocoder(BaseGeocoder):
+class Geocoder(abstract.Geocoder):
     url = 'https://maps.googleapis.com/maps/api/geocode/json'
     key = os.environ['GOOGLE_API_KEY']
     

@@ -1,11 +1,9 @@
 from abc import ABC, abstractmethod
 import asyncio
 from json import JSONDecodeError
-from typing import AsyncGenerator, List
+from typing import AsyncGenerator, Generator, List, Protocol
 import httpx
 import logging
-
-from common import GeocodedLocation
 
 from common import (
     GeocodedLocation,
@@ -14,10 +12,13 @@ from common import (
     ServerError,
 )
 
+
 logger = logging.getLogger(__name__)
 
-class BaseGeocoder(ABC):
-    def __init__(self, rate_limit=2):
+class Geocoder(ABC):
+    RequestClient = httpx.AsyncClient
+
+    def __init__(self, rate_limit: int = 2):
         self.semaphore = asyncio.Semaphore(rate_limit)
     
     @abstractmethod
@@ -44,7 +45,7 @@ class BaseGeocoder(ABC):
                 raise BadAuthError()
             if resp.status_code == 429:
                 raise RateLimitError()
-            if resp.status_code == 499:
+            if resp.status_code in {498, 499}:
                 raise BadAuthError
             if resp.status_code >= 500:
                 raise ServerError()
@@ -59,7 +60,7 @@ class BaseGeocoder(ABC):
         return body
 
     async def _call(self, address):
-        async with httpx.AsyncClient() as client:
+        async with self.RequestClient() as client:
             return await self._call_with_client(address, client)
 
     async def geocode(self, address: str) -> GeocodedLocation:
@@ -71,8 +72,8 @@ class BaseGeocoder(ABC):
             response = await self._call_with_client(address, client)
         return await self._response_to_location(address, response)
     
-    async def batch_geocode_generator(self, addresses: List[str], in_order=True) -> AsyncGenerator[GeocodedLocation, None]:
-        async with httpx.AsyncClient() as client:
+    async def geocode_async_gen(self, addresses: List[str], in_order=True) -> AsyncGenerator[GeocodedLocation, None]:
+        async with self.RequestClient() as client:
             coros = (self.geocode_with_client(address, client) for address in addresses)
             tasks = [asyncio.create_task(coro) for coro in coros]  # tasks actually start running here.
 
