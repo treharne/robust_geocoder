@@ -36,7 +36,7 @@ class Geocoder(abstract.Geocoder):
             return self.token
 
         logger.info(f'[{self.name}]: Getting token')
-        async with httpx.AsyncClient() as client:
+        async with self.RequestClient() as client:
             resp = await client.post(
                 url=self.token_url,
                 params=await self._login_params(),
