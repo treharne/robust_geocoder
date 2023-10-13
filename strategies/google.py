@@ -1,5 +1,6 @@
 from enum import Enum
 import os
+from typing import Tuple
 from dotenv import load_dotenv
 
 import httpx
@@ -57,27 +58,31 @@ class Geocoder(abstract.Geocoder):
             url=self.url,
             params={'address': address, 'key': self.key}
         )
+    
+    async def _raise_for_status(self, address: str, response_body: dict) -> STATUS:
+        status = response_body.get('status')
 
-    async def _response_to_location(self, address: str, response_body: dict) -> GeocodedLocation:
-        status = response_body['status']
-
-        if status != STATUS.OK:
-            logger.error(f'[{self.name}]: Error geocoding address: "{address}". Status: {status}. Response: {response_body}')
-            if status == STATUS.ZERO_RESULTS:
-                raise FailedGeocodeError()
-            elif status == STATUS.OVER_DAILY_LIMIT:
-                raise RateLimitError()
-            elif status == STATUS.OVER_QUERY_LIMIT:
-                raise RateLimitError()
-            elif status == STATUS.REQUEST_DENIED:
-                raise BadAuthError()
-            elif status == STATUS.INVALID_REQUEST:
-                raise GeocoderError()
-            elif status == STATUS.UNKNOWN_ERROR:
-                raise GeocoderError()
-            else:
-                raise GeocoderError()
+        if status == STATUS.OK:
+            return STATUS.OK
         
+        logger.error(f'[{self.name}]: Error geocoding address: "{address}". Status: {status}. Response: {response_body}')
+
+        if status == STATUS.ZERO_RESULTS:
+            raise FailedGeocodeError()
+        elif status == STATUS.OVER_DAILY_LIMIT:
+            raise RateLimitError()
+        elif status == STATUS.OVER_QUERY_LIMIT:
+            raise RateLimitError()
+        elif status == STATUS.REQUEST_DENIED:
+            raise BadAuthError()
+        elif status == STATUS.INVALID_REQUEST:
+            raise GeocoderError()
+        elif status == STATUS.UNKNOWN_ERROR:
+            raise GeocoderError()
+        else:
+            raise GeocoderError()
+
+    async def _parse_response_body(self, address: str, response_body: dict) -> Tuple[float, float, str]:
         try:
             results = response_body['results']
         except KeyError as e:
@@ -87,20 +92,27 @@ class Geocoder(abstract.Geocoder):
         try:
             first = results[0]
         except IndexError:
-            logger.error(f'[{self.name}]: Error geocoding address: "{address}". No Results. Status: {status}. Response: {response_body}')
+            logger.error(f'[{self.name}]: Error geocoding address: "{address}". No Results. Response: {response_body}')
             raise FailedGeocodeError()
 
         try:
             loc = first['geometry']['location']
             lat = loc['lat']
             lon = loc['lng']
+            geocode_address = first['formatted_address']
         except KeyError as e:
             logger.error(f'[{self.name}]: Error geocoding address: "{address}". Invalid response format: {response_body}. Error: {e}')
             raise GeocoderError()
+        
+        return lat, lon, geocode_address
 
+    async def _response_to_location(self, address: str, response_body: dict) -> GeocodedLocation:
+        await self._raise_for_status(address, response_body)
+        lat, lon, geocode_address = await self._parse_response_body(address, response_body)
+        
         return GeocodedLocation(
             address=address,
             lat=round(lat, 6),
             lon=round(lon, 6),
-            geocode_address=first['formatted_address'],
+            geocode_address=geocode_address,
         )
